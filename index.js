@@ -1,6 +1,7 @@
 
 var EventEmitter = require('events').EventEmitter
   , inherits = require('inherits')
+  , debug = require('debug')('geolocation')
 
 var currentPosition
   , watchers = 0
@@ -55,9 +56,12 @@ Watcher.prototype.start = function () {
   this.watching = true
   watchers++
 
+  debug('start watcher')
+
   emitter.on('change', this.changeHandler)
 
   if (watchers === 1) {
+    debug('start geolocation watch position')
     watcherHandle = navigator.geolocation.watchPosition(function (position) {
       currentPosition = position
       emitter.emit('change', position)
@@ -75,6 +79,7 @@ Watcher.prototype.stop = function () {
   emitter.removeListener('change', this.changeHandler)
 
   if (!watchers) {
+    debug('clear geolocation watch')
     navigator.geolocation.clearWatch(watcherHandle)
   }
 }

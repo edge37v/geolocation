@@ -2,26 +2,32 @@
 var EventEmitter = require('events').EventEmitter
   , inherits = require('inherits')
 
-exports.getCurrentPosition = function (options, callback) {
-  if (typeof options === 'function') {
-    callback = options
-    options = {}
+var currentPosition
+  , watchers = 0
+  , watcherHandle
+  , emitter = new EventEmitter()
+
+emitter.setMaxListeners(0)
+
+exports.options = {}
+
+exports.getCurrentPosition = function (callback) {
+  if (watchers && currentPosition) {
+    process.nextTick(function () {
+      callback(null, currentPosition)
+    })
+    return
   }
 
   navigator.geolocation.getCurrentPosition(function (position) {
     callback(null, position)
   }, function (error) {
     callback(error)
-  }, options)
+  }, exports.options)
 }
 
-exports.createWatcher = function (options, callback) {
-  if (typeof options === 'function') {
-    callback = options
-    options = {}
-  }
-
-  var watcher = new Watcher(options)
+exports.createWatcher = function (callback) {
+  var watcher = new Watcher()
 
   if (callback) {
     watcher.on('change', callback)
@@ -32,12 +38,14 @@ exports.createWatcher = function (options, callback) {
   return watcher
 }
 
-function Watcher(options) {
+function Watcher() {
   EventEmitter.call(this)
-
   this.watching = false
-  this.options = options || {}
-  this.handle = null
+
+  var self = this
+  this.changeHandler = function (position) {
+    self.emit('change', position)
+  }
 }
 inherits(Watcher, EventEmitter)
 exports.Watcher = Watcher
@@ -45,16 +53,28 @@ exports.Watcher = Watcher
 Watcher.prototype.start = function () {
   if (this.watching) return
   this.watching = true
-  var self = this
-  this.handle = navigator.geolocation.watchPosition(function (position) {
-    self.emit('change', position)
-  }, function (error) {
-    self.emit('error', error)
-  }, this.options)
+  watchers++
+
+  emitter.on('change', this.changeHandler)
+
+  if (watchers === 1) {
+    watcherHandle = navigator.geolocation.watchPosition(function (position) {
+      currentPosition = position
+      emitter.emit('change', position)
+    }, function (error) {
+      emitter.emit('error', error)
+    }, this.options)
+  }
 }
 
 Watcher.prototype.stop = function () {
   if (!this.watching) return
   this.watching = false
-  navigator.geolocation.clearWatch(this.handle)
+  watchers--
+
+  emitter.removeListener('change', this.changeHandler)
+
+  if (!watchers) {
+    navigator.geolocation.clearWatch(watcherHandle)
+  }
 }

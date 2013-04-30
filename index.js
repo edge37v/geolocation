@@ -15,13 +15,29 @@ module.exports = exports = emitter
 exports.options = {}
 
 exports.getCurrentPosition = function (callback) {
-  if (watchers && currentPosition) {
-    process.nextTick(function () {
-      callback(null, currentPosition)
-    })
+  if (watchers) {
+    if (currentPosition) {
+      debug('get current location - cache hit')
+      process.nextTick(function () {
+        callback(null, currentPosition)
+      })
+    } else {
+      debug('get current location - cache fetching')
+      function changeListener(position) {
+        emitter.removeListener('error', errorListener)
+        callback(null, position)
+      }
+      function errorListener(error) {
+        emitter.removeListener('change', changeListener)
+        callback(error)
+      }
+      emitter.once('change', changeListener)
+      emitter.once('error', errorListener)
+    }
     return
   }
 
+  debug('get current location - cache miss')
   navigator.geolocation.getCurrentPosition(function (position) {
     callback(null, position)
   }, function (error) {

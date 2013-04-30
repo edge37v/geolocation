@@ -10,6 +10,8 @@ var currentPosition
 
 emitter.setMaxListeners(0)
 
+module.exports = exports = emitter
+
 exports.options = {}
 
 exports.getCurrentPosition = function (callback) {

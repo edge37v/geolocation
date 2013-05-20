@@ -2,6 +2,8 @@
 
 geolocation
 
+[![Dependency Status](https://gemnasium.com/tellnes/geolocation.png)](https://gemnasium.com/tellnes/geolocation)
+
 ## Usage
 
 ```javascript
